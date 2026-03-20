@@ -5,11 +5,11 @@ export const products = [
   { id: 2, name: "Mechanical Keyboard", price: 85.00, category: "Electronics", barcode: "1002", image: "https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=200&h=200&fit=crop" },
   { 
   id: 3, 
-  name: "Organic Milk", 
-  price: 4.50, 
+  name: "Fresh Red Apples", 
+  price: 5.50, 
   category: "Groceries", 
   barcode: "2001", 
-  image: "https://images.unsplash.com/photo-1550583724-1255818c053b?q=80&w=400&auto=format&fit=crop" 
+  image: "https://images.pexels.com/photos/102104/pexels-photo-102104.jpeg?auto=compress&cs=tinysrgb&w=400" 
 },
   { id: 4, name: "Whole Grain Bread", price: 3.20, category: "Groceries", barcode: "2002", image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=200&h=200&fit=crop" },
   { id: 5, name: "Cotton T-Shirt", price: 18.00, category: "Apparel", barcode: "3001", image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=200&h=200&fit=crop" },
