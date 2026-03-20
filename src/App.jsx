@@ -1,30 +1,28 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { products, categories } from './data/product';
 import { ProductCard, CartItem, ReceiptModal } from './components/POSComponents';
 import { InventoryManager } from './components/InventoryManager';
 import { useInventory } from './hooks/useInventory';
 
 const App = () => {
-  // 1. Inventory & Sync Custom Hook
   const { stock, deductStock, addToSyncQueue, isOnline, syncQueueLength } = useInventory();
 
-  // 2. State Management
   const [cart, setCart] = useState([]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [history, setHistory] = useState(() => JSON.parse(localStorage.getItem('pos_history')) || []);
-  const [activeTab, setActiveTab] = useState("pos"); // 'pos', 'history', or 'inventory'
+  const [activeTab, setActiveTab] = useState("pos");
   const [lastTransaction, setLastTransaction] = useState(null);
   const [barcodeInput, setBarcodeInput] = useState("");
+  
+  // Mobile UI State: Toggle cart visibility on small screens
+  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
 
-  // 3. Persistence Effect
   useEffect(() => {
     localStorage.setItem('pos_history', JSON.stringify(history));
   }, [history]);
 
-  // 4. Cart Logic
   const addToCart = (product) => {
-    // Check if stock is available
     const currentStock = stock[product.id] || 0;
     const inCart = cart.find(item => item.id === product.id)?.quantity || 0;
 
@@ -56,12 +54,9 @@ const App = () => {
 
   const removeFromCart = (id) => setCart(prev => prev.filter(item => item.id !== id));
 
-  // 5. Totals
   const subtotal = cart.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
-  const tax = subtotal * 0.075;
-  const total = subtotal + tax;
+  const total = subtotal + (subtotal * 0.075);
 
-  // 6. Barcode Handler
   const handleBarcodeSubmit = (e) => {
     e.preventDefault();
     const product = products.find(p => p.barcode === barcodeInput);
@@ -69,35 +64,25 @@ const App = () => {
       addToCart(product);
       setBarcodeInput("");
     } else {
-      alert("Product not found");
       setBarcodeInput("");
     }
   };
 
-  // 7. Checkout Process
   const handleCheckout = (paymentMethod) => {
     if (cart.length === 0) return;
-
     const transaction = {
       id: `TXN-${Date.now()}`,
       items: [...cart],
-      subtotal,
-      tax,
       total,
       paymentMethod,
       date: new Date().toLocaleString()
     };
-
-    // Update Local UI State
     setHistory([transaction, ...history]);
-    
-    // Manage Backend-Simulated Tasks
     deductStock(cart);
     addToSyncQueue(transaction);
-
-    // Show Receipt and Reset
     setLastTransaction(transaction);
     setCart([]);
+    setIsMobileCartOpen(false); // Close mobile drawer after pay
   };
 
   const filteredProducts = products.filter(p => 
@@ -107,154 +92,180 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-900">
-      {/* --- SHARED NAVBAR --- */}
-      <nav className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-20">
-        <div className="flex items-center gap-6">
-          <h1 className="text-xl font-black text-blue-600 tracking-tight">LUXE<span className="text-gray-900">POS</span></h1>
-          <div className="flex bg-gray-100 p-1 rounded-xl">
-            <button onClick={() => setActiveTab('pos')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'pos' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}>Terminal</button>
-            <button onClick={() => setActiveTab('history')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'history' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}>History</button>
-            <button onClick={() => setActiveTab('inventory')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'inventory' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}>Inventory</button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4">
-          {syncQueueLength > 0 && (
-            <div className="bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-amber-100 animate-pulse">
-              {syncQueueLength} Pending Sync
+      {/* --- RESPONSIVE NAVBAR --- */}
+      <nav className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-30 shadow-sm">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex items-center justify-between w-full md:w-auto gap-6">
+            <h1 className="text-xl font-black text-blue-600 tracking-tight">LUXE<span className="text-gray-900">POS</span></h1>
+            
+            {/* Status indicators moved inside a flex-wrap container for mobile */}
+            <div className="flex gap-2">
+               <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border text-[10px] font-bold uppercase ${isOnline ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                {isOnline ? 'Online' : 'Offline'}
+              </div>
+              {syncQueueLength > 0 && (
+                <div className="bg-amber-50 text-amber-700 px-2 py-1 rounded-lg text-[10px] font-bold border border-amber-100 uppercase">
+                  {syncQueueLength} Syncing
+                </div>
+              )}
             </div>
-          )}
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold uppercase tracking-wider ${isOnline ? 'bg-green-50 text-green-700 border-green-100' : 'bg-red-50 text-red-700 border-red-100'}`}>
-            <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-            {isOnline ? 'Starlink Online' : 'Offline Mode'}
+          </div>
+
+          <div className="flex bg-gray-100 p-1 rounded-xl w-full md:w-auto">
+            <button onClick={() => setActiveTab('pos')} className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'pos' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}>Terminal</button>
+            <button onClick={() => setActiveTab('history')} className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'history' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}>History</button>
+            <button onClick={() => setActiveTab('inventory')} className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'inventory' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}>Inventory</button>
           </div>
         </div>
       </nav>
 
-      {/* --- DYNAMIC VIEWS --- */}
-      {activeTab === 'pos' ? (
-        <main className="flex-1 flex overflow-hidden">
-          {/* Main Terminal Area */}
-          <div className="flex-1 flex flex-col p-6 overflow-y-auto">
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
-              <form onSubmit={handleBarcodeSubmit} className="relative flex-1">
-                <input 
-                  type="text" 
-                  placeholder="Scan barcode or type SKU (e.g. 1001)..."
-                  className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-11 pr-4 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm transition-all"
-                  value={barcodeInput}
-                  onChange={(e) => setBarcodeInput(e.target.value)}
-                />
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-4 top-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                </svg>
-              </form>
-              
-              <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                {categories.map(cat => (
-                  <button 
-                    key={cat}
-                    onClick={() => setCategory(cat)}
-                    className={`px-5 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${category === cat ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-white border border-gray-200 text-gray-600 hover:border-blue-400'}`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {filteredProducts.map(product => (
-                <ProductCard key={product.id} product={product} onAdd={addToCart} />
-              ))}
-            </div>
-          </div>
-
-          {/* Cart Sidebar */}
-          <aside className="w-96 bg-white border-l border-gray-200 flex flex-col shadow-xl">
-            <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-              <h2 className="font-black text-lg flex items-center gap-2">Order <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">{cart.length}</span></h2>
-              <button onClick={() => setCart([])} className="text-xs font-bold text-red-500 uppercase hover:bg-red-50 px-2 py-1 rounded">Clear</button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto">
-              {cart.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center opacity-20 italic p-10 text-center">
-                  <p>Ready for next customer</p>
+      {/* --- MAIN CONTENT --- */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        {activeTab === 'pos' && (
+          <>
+            {/* Terminal Main Area */}
+            <div className="flex-1 flex flex-col p-4 md:p-6 overflow-y-auto pb-24 md:pb-6">
+              <div className="flex flex-col gap-4 mb-6">
+                <form onSubmit={handleBarcodeSubmit} className="relative w-full">
+                  <input 
+                    type="text" 
+                    placeholder="Scan or Search..."
+                    className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-11 pr-4 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                    value={barcodeInput}
+                    onChange={(e) => setBarcodeInput(e.target.value)}
+                  />
+                  <svg className="h-5 w-5 absolute left-4 top-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </form>
+                
+                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                  {categories.map(cat => (
+                    <button 
+                      key={cat}
+                      onClick={() => setCategory(cat)}
+                      className={`px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border ${category === cat ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white border-gray-200 text-gray-500'}`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
                 </div>
-              ) : (
-                cart.map(item => (
-                  <CartItem key={item.id} item={item} updateQty={updateQuantity} remove={removeFromCart} />
-                ))
-              )}
-            </div>
-
-            <div className="p-6 bg-gray-50 border-t border-gray-200 space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm text-gray-500"><span>Subtotal</span><span className="font-medium">${subtotal.toFixed(2)}</span></div>
-                <div className="flex justify-between text-xl font-black pt-2 border-t border-gray-200"><span>Total</span><span className="text-blue-600">${total.toFixed(2)}</span></div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                {['Cash', 'Card', 'Transfer'].map(method => (
-                  <button key={method} onClick={() => handleCheckout(method)} className="flex flex-col items-center justify-center bg-white border border-gray-300 py-3 rounded-xl hover:border-blue-500 active:scale-95 group transition-all">
-                    <span className="text-[10px] font-bold uppercase text-gray-400 group-hover:text-blue-500">{method}</span>
-                  </button>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                {filteredProducts.map(product => (
+                  <ProductCard key={product.id} product={product} onAdd={addToCart} />
                 ))}
               </div>
+            </div>
 
+            {/* Desktop Cart Sidebar / Mobile Cart Drawer */}
+            <aside className={`
+              fixed inset-0 z-40 transform transition-transform duration-300 ease-in-out bg-white
+              md:relative md:translate-x-0 md:z-10 md:w-80 lg:w-96 md:border-l md:border-gray-200 md:flex md:flex-col
+              ${isMobileCartOpen ? 'translate-x-0' : 'translate-x-full'}
+            `}>
+              {/* Mobile Close Button */}
               <button 
-                onClick={() => handleCheckout('Cash')}
-                disabled={cart.length === 0}
-                className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-lg shadow-lg shadow-blue-200 hover:bg-blue-700 disabled:opacity-50 transition-all active:scale-[0.98]"
+                onClick={() => setIsMobileCartOpen(false)}
+                className="md:hidden absolute top-4 right-4 p-2 bg-gray-100 rounded-full"
               >
-                PAY NOW
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+
+              <div className="p-4 border-b border-gray-100 flex justify-between items-center mt-10 md:mt-0">
+                <h2 className="font-black text-lg">Current Order ({cart.length})</h2>
+                <button onClick={() => setCart([])} className="text-xs font-bold text-red-500 uppercase">Clear</button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto">
+                {cart.length === 0 ? (
+                  <div className="p-10 text-center opacity-30 italic">Cart is empty</div>
+                ) : (
+                  cart.map(item => <CartItem key={item.id} item={item} updateQty={updateQuantity} remove={removeFromCart} />)
+                )}
+              </div>
+
+              <div className="p-4 md:p-6 bg-gray-50 border-t border-gray-200 space-y-4">
+                <div className="flex justify-between text-xl font-black">
+                  <span>Total</span>
+                  <span className="text-blue-600">${total.toFixed(2)}</span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {['Cash', 'Card', 'Transfer'].map(method => (
+                    <button key={method} onClick={() => handleCheckout(method)} className="bg-white border border-gray-300 py-3 rounded-xl text-[10px] font-bold uppercase hover:border-blue-500 active:scale-95">
+                      {method}
+                    </button>
+                  ))}
+                </div>
+
+                <button 
+                  onClick={() => handleCheckout('Cash')}
+                  disabled={cart.length === 0}
+                  className="w-full bg-blue-600 text-white py-4 rounded-xl font-black text-lg shadow-lg shadow-blue-200 disabled:opacity-50"
+                >
+                  PAY NOW
+                </button>
+              </div>
+            </aside>
+
+            {/* Mobile Bottom Bar (Visible only on mobile when cart has items) */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex justify-between items-center z-30 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+              <div>
+                <p className="text-[10px] text-gray-500 font-bold uppercase">Items: {cart.length}</p>
+                <p className="text-lg font-black text-blue-600">${total.toFixed(2)}</p>
+              </div>
+              <button 
+                onClick={() => setIsMobileCartOpen(true)}
+                className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-md"
+              >
+                View Cart
               </button>
             </div>
-          </aside>
-        </main>
-      ) : activeTab === 'history' ? (
-        <div className="flex-1 p-8 overflow-y-auto">
-          <h2 className="text-2xl font-black mb-6">Recent Transactions</h2>
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-            <table className="w-full text-left">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  <th className="p-4 text-xs font-bold text-gray-400 uppercase">ID</th>
-                  <th className="p-4 text-xs font-bold text-gray-400 uppercase">Date</th>
-                  <th className="p-4 text-xs font-bold text-gray-400 uppercase">Payment</th>
-                  <th className="p-4 text-xs font-bold text-gray-400 uppercase">Total</th>
-                  <th className="p-4"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {history.map(txn => (
-                  <tr key={txn.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="p-4 text-sm font-mono text-gray-400">{txn.id.slice(-6)}</td>
-                    <td className="p-4 text-sm font-medium">{txn.date}</td>
-                    <td className="p-4"><span className="px-2 py-1 bg-gray-100 rounded text-[10px] font-bold uppercase">{txn.paymentMethod}</span></td>
-                    <td className="p-4 text-sm font-black text-blue-600">${txn.total.toFixed(2)}</td>
-                    <td className="p-4 text-right">
-                      <button onClick={() => setLastTransaction(txn)} className="text-blue-500 text-xs font-bold hover:underline">Receipt</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : (
-        <div className="flex-1 p-8 overflow-y-auto">
-          <InventoryManager stock={stock} />
-        </div>
-      )}
+          </>
+        )}
 
-      {/* --- MODALS --- */}
+        {activeTab === 'history' && (
+          <div className="flex-1 p-4 md:p-8 overflow-y-auto">
+            <h2 className="text-2xl font-black mb-6">Transactions</h2>
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto shadow-sm">
+              <table className="w-full text-left min-w-[500px]">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr className="text-[10px] font-bold text-gray-400 uppercase">
+                    <th className="p-4">Date</th>
+                    <th className="p-4">Method</th>
+                    <th className="p-4">Total</th>
+                    <th className="p-4"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {history.map(txn => (
+                    <tr key={txn.id} className="text-sm">
+                      <td className="p-4 font-medium">{txn.date}</td>
+                      <td className="p-4 uppercase text-[10px] font-bold">{txn.paymentMethod}</td>
+                      <td className="p-4 font-black text-blue-600">${txn.total.toFixed(2)}</td>
+                      <td className="p-4 text-right">
+                        <button onClick={() => setLastTransaction(txn)} className="text-blue-500 font-bold">Receipt</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'inventory' && (
+          <div className="flex-1 p-4 md:p-8 overflow-y-auto">
+            <InventoryManager stock={stock} />
+          </div>
+        )}
+      </div>
+
       {lastTransaction && (
-        <ReceiptModal 
-          transaction={lastTransaction} 
-          onClose={() => setLastTransaction(null)} 
-        />
+        <ReceiptModal transaction={lastTransaction} onClose={() => setLastTransaction(null)} />
       )}
     </div>
   );
