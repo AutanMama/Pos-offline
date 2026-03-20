@@ -68,22 +68,42 @@ const App = () => {
     }
   };
 
-  const handleCheckout = (paymentMethod) => {
-    if (cart.length === 0) return;
+ const handleCheckout = (paymentMethod) => {
+  if (cart.length === 0) return;
+
+  try {
     const transaction = {
       id: `TXN-${Date.now()}`,
       items: [...cart],
-      total,
-      paymentMethod,
+      subtotal: subtotal || 0, // Ensure these aren't undefined
+      tax: (subtotal * 0.075) || 0,
+      total: total || 0,
+      paymentMethod: paymentMethod || 'Cash',
       date: new Date().toLocaleString()
     };
-    setHistory([transaction, ...history]);
-    deductStock(cart);
-    addToSyncQueue(transaction);
+
+    // 1. Update History
+    setHistory(prev => [transaction, ...prev]);
+    
+    // 2. Deduct Stock (Wrapped in check)
+    if (typeof deductStock === 'function') {
+      deductStock(cart);
+    }
+    
+    // 3. Sync Queue
+    if (typeof addToSyncQueue === 'function') {
+      addToSyncQueue(transaction);
+    }
+
+    // 4. Set for Modal & Reset
     setLastTransaction(transaction);
     setCart([]);
-    setIsMobileCartOpen(false); // Close mobile drawer after pay
-  };
+    setIsMobileCartOpen(false);
+  } catch (error) {
+    console.error("Checkout Error:", error);
+    alert("Checkout failed. Check the console for details.");
+  }
+};
 
   const filteredProducts = products.filter(p => 
     (category === "All" || p.category === category) &&
