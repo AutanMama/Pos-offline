@@ -1,16 +1,30 @@
-# React + Vite
+# Tally
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An offline-first point of sale for Nigerian shops. Scan or tap items, take cash, card or transfer, print a receipt, and keep selling when the network drops. Sales made offline wait on the till and sync when the connection comes back.
 
-Currently, two official plugins are available:
+**Live demo:** https://pos-offline-tau.vercel.app
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## What it does
 
-## React Compiler
+- **Till:** one box for barcode scanners and name search (press `/` to jump to it), colour-coded categories, product tiles with live stock counts, and a sale panel with VAT at 7.5%.
+- **Payment:** cash, card or transfer. For cash, quick amounts and the change to give back are worked out for the cashier.
+- **Receipts:** a thermal-style receipt for every sale, printable on an 80 mm printer.
+- **Offline first:** stock, sales and the sync queue live in the browser, so the till keeps working without a connection.
+- **Sales:** today's takings, average sale, how customers paid, and every receipt.
+- **Stock:** levels with low and out-of-stock states, search, and receiving deliveries.
+- Light and dark themes, and a phone layout with the sale in a bottom sheet.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Run it
 
-## Expanding the ESLint configuration
+```bash
+npm install
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+The demo shop, products and a morning of sales are sample data. Clear the site's storage to start fresh.
+
+## Stack
+
+React 19, Vite, Tailwind CSS 4, lucide-react, IBM Plex Sans and Mono. No backend: the upload step of the sync queue is simulated.
+
+Design decisions are in [BRAND.md](BRAND.md).
