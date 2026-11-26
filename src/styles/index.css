@@ -1,0 +1,194 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Tally brand tokens. Components use these names only; see BRAND.md. */
+@theme {
+  --color-page: var(--page);
+  --color-panel: var(--panel);
+  --color-sunk: var(--sunk);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-rail: var(--rail);
+  --color-rail-ink: var(--rail-ink);
+  --color-rail-active: var(--rail-active);
+
+  --color-go: var(--go);
+  --color-go-hover: var(--go-hover);
+  --color-on-go: var(--on-go);
+  --color-go-soft: var(--go-soft);
+  --color-low: var(--low);
+  --color-low-soft: var(--low-soft);
+  --color-out: var(--out);
+  --color-out-soft: var(--out-soft);
+
+  --color-staples: var(--staples);
+  --color-drinks: var(--drinks);
+  --color-household: var(--household);
+  --color-snacks: var(--snacks);
+  --color-fresh: var(--fresh);
+
+  /* Receipt paper stays paper-coloured in both themes. */
+  --color-paper: #fffdf8;
+  --color-paper-ink: #1c1c1a;
+  --color-paper-muted: #5b5b57;
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --shadow-raised: 0 1px 2px rgb(20 23 28 / 0.06), 0 8px 24px -16px rgb(20 23 28 / 0.35);
+}
+
+:root {
+  --page: #eceef1;
+  --panel: #ffffff;
+  --sunk: #f4f5f7;
+  --line: #d9dde3;
+  --ink: #14171c;
+  --muted: #59606b;
+  --rail: #14171c;
+  --rail-ink: #c4c9d1;
+  --rail-active: #2a2f37;
+
+  --go: #0b7a50;
+  --go-hover: #08643f;
+  --on-go: #ffffff;
+  --go-soft: #e2f2ea;
+  --low: #8f5600;
+  --low-soft: #fbefd9;
+  --out: #b3261e;
+  --out-soft: #fbe6e4;
+
+  --staples: #86651a;
+  --drinks: #1d6a86;
+  --household: #6a4c9c;
+  --snacks: #a8431c;
+  --fresh: #3b7a36;
+  color-scheme: light;
+}
+
+.dark {
+  --page: #0f1114;
+  --panel: #181b20;
+  --sunk: #1f2329;
+  --line: #2c3139;
+  --ink: #eceef1;
+  --muted: #9aa1ac;
+  --rail: #0a0c0e;
+  --rail-ink: #c4c9d1;
+  --rail-active: #22262d;
+
+  --go: #3fcf8e;
+  --go-hover: #5bdba0;
+  --on-go: #0f1114;
+  --go-soft: #16302a;
+  --low: #f0b44c;
+  --low-soft: #33280f;
+  --out: #f28b82;
+  --out-soft: #3a1d1b;
+
+  --staples: #d6b25a;
+  --drinks: #6cc2e0;
+  --household: #b9a0ea;
+  --snacks: #f09a72;
+  --fresh: #8fd18a;
+  color-scheme: dark;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--go);
+    outline-offset: 2px;
+  }
+
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+
+  input[type="number"] {
+    appearance: textfield;
+  }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    appearance: none;
+    margin: 0;
+  }
+}
+
+@layer components {
+  .label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .figure {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Paper receipt: a torn edge drawn with a repeating gradient. */
+.receipt-edge {
+  height: 10px;
+  background: linear-gradient(-45deg, transparent 6px, #fffdf8 0) 0 0 / 12px 10px repeat-x,
+    linear-gradient(45deg, transparent 6px, #fffdf8 0) 0 0 / 12px 10px repeat-x;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(0.96);
+  }
+}
+.animate-rise {
+  animation: rise 0.22s ease-out both;
+}
+.animate-pop {
+  animation: pop 0.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-pop {
+    animation: none;
+  }
+}
+
+/* Only the receipt prints. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #print-receipt,
+  #print-receipt * {
+    visibility: visible;
+  }
+  #print-receipt {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 80mm;
+    box-shadow: none;
+  }
+  .receipt-edge {
+    display: none;
+  }
+}
